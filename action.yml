@@ -1,0 +1,54 @@
+name: "Deploy Project to Server"
+author: Luke Swanson
+description: "This action deploys a project from a source to a destination server."
+branding:
+  icon: 'upload'
+  color: 'blue'
+inputs:
+  local_path:
+    description: "The local path to the project source."
+    required: true
+  remote_path:
+    description: "The remote path to which the project should be deployed."
+    required: true
+  remote_host:
+    description: "The identifier of the remote host to which the project should be deployed."
+    required: true
+  remote_user:
+    description: "The username to use for connecting to the remote host."
+    required: true
+  remote_key:
+    description: "The key identifier for logging in to the remote host with the given user."
+    required: true
+runs:
+  using: "composite"
+  steps:
+    - name: Setup Access Key
+      run: |
+        mkdir -p ~/.ssh
+        echo '${{ inputs.remote_key }}' >> ./key.txt
+        chmod 600 ./key.txt
+      shell: bash
+    - name: Ensure directory exists
+      run: ssh -o StrictHostKeyChecking=no -T -i ./key.txt ${{ inputs.remote_user }}@${{ inputs.remote_host }} "mkdir -p ${{ inputs.remote_path }}"
+      shell: bash
+
+    - name: Upload to web server via rsync
+      uses: burnett01/rsync-deployments@7.0.1
+      with:
+        # switches:
+        # -v : verbose output
+        # -r : recurse into subdirectories
+        # -c : use checksum to determine what files to update/skip
+        # -t : preserve modification times
+        # --delete : delete extraneous files from destination directories
+        # --exclude-from : skip any files in rsync-exclude
+        # --chmod : For each directory (D) and file (F), give user (u) and group (g) rwx permissions.
+        #           Give others (o) only read permissions, plus execute for directories.
+        switches: -vrct --delete --exclude-from 'rsync-exclude' --chmod=Du=rwx,Dg=rwx,Do=rx,Fu=rwx,Fg=rwx,Fo=r
+        path: ${{ inputs.local_path }}/*
+        remote_path: ${{ inputs.remote_path }}
+        remote_host: ${{ inputs.remote_host }}
+        remote_user: ${{ inputs.remote_user }}
+        remote_key:  ${{ inputs.remote_key }}
+      shell: bash
