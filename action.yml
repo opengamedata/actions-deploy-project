@@ -51,4 +51,4 @@ runs:
         remote_host: ${{ inputs.remote_host }}
         remote_user: ${{ inputs.remote_user }}
         remote_key:  ${{ inputs.remote_key }}
-      shell: bash
+      
