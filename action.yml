@@ -21,7 +21,11 @@ inputs:
     description: "The key identifier for logging in to the remote host with the given user."
     required: true
   with_venv:
-    description: "Whether or not to add a step for initializing a virtual environment. It is assumed that the `requirements.txt` file is part of the deploy, i.e. `requirements.txt` is *not* in the `rsync-ignore` file."
+    description: "Whether or not to add a step for initializing a virtual environment."
+    required: false
+    default: "false"
+  with_reqs_file:
+    description: "The path to the requirements.txt file, if the file needs to be uploaded as part of the action (i.e. it is not within the `local_path` directory). This is ignored if with_venv is false, since requirements.txt is only needed for venv setup."
     required: false
     default: "false"
 runs:
@@ -56,6 +60,9 @@ runs:
         remote_user: ${{ inputs.remote_user }}
         remote_key:  ${{ inputs.remote_key }}
 
+    - name: Upload requirements.txt
+      if: inputs.with_venv == 'true' && inputs.with_reqs_file != 'false'
+      run: scp -o StrictHostKeyChecking=no -o ConnectTimeout=30 -T -i ./key.txt ${{ inputs.with_reqs_file }} ${{ inputs.remote_user }}@${{ inputs.remote_host }}:${{ inputs.remote_path }}
     - name: Set up virtual environment
       if: inputs.with_venv == 'true'
       run: ssh -o StrictHostKeyChecking=no -o ConnectTimeout=30 -T -i ./key.txt ${{ inputs.remote_user }}@${{ inputs.remote_host }} "cd ${{ inputs.remote_path }}; python -m venv --system-site-packages ./.venv; source .venv/bin/activate; python -m pip install -r requirements.txt --upgrade"
